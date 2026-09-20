@@ -1,5 +1,6 @@
 """
 Main FastAPI Application entrypoint.
+Serves REST API, WebSocket streams, and the static NOC Dashboard.
 """
 import sys
 from pathlib import Path
@@ -11,11 +12,15 @@ if str(PROJECT_ROOT) not in sys.path:
 
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
+from fastapi.responses import FileResponse
 
 from backend.config import settings
 from backend.api.routes import router as api_router
 from backend.websocket.manager import ws_manager
 from database.init_db import init_db
+
+DASHBOARD_DIR = PROJECT_ROOT / "dashboard"
 
 
 @asynccontextmanager
@@ -52,16 +57,20 @@ async def websocket_live_endpoint(websocket: WebSocket):
     await ws_manager.connect(websocket)
     try:
         while True:
-            # Keep connection alive; can accept client commands if needed
-            data = await websocket.receive_text()
+            # Keep connection alive & receive optional client commands
+            await websocket.receive_text()
     except WebSocketDisconnect:
         ws_manager.disconnect(websocket)
     except Exception:
         ws_manager.disconnect(websocket)
 
 
+# Serve root index.html from dashboard directory
 @app.get("/")
-async def root():
+async def serve_dashboard():
+    index_file = DASHBOARD_DIR / "index.html"
+    if index_file.exists():
+        return FileResponse(str(index_file))
     return {
         "message": "Wi-Fi Classroom Presence Estimation API",
         "docs_url": "/docs",
@@ -70,11 +79,16 @@ async def root():
     }
 
 
+# Mount static files for dashboard assets (styles.css, app.js, etc.)
+if DASHBOARD_DIR.exists():
+    app.mount("/dashboard", StaticFiles(directory=str(DASHBOARD_DIR), html=True), name="dashboard")
+
+
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run(
         "backend.main:app",
         host=settings.HOST,
         port=settings.PORT,
-        reload=True
+        reload=True,
     )

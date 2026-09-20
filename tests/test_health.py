@@ -19,9 +19,8 @@ def test_health_check_returns_200():
 
 
 def test_root_endpoint():
-    """Verify that root / returns API metadata."""
+    """Verify that root / returns 200 OK with dashboard or metadata."""
     response = client.get("/")
     assert response.status_code == 200
-    data = response.json()
-    assert "health_url" in data
-    assert data["health_url"] == "/health"
+    assert len(response.text) > 0
+

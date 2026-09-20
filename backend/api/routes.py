@@ -2,13 +2,36 @@
 API route definitions for the Wi-Fi Presence system.
 """
 from typing import List, Dict, Any, Optional
-from fastapi import APIRouter, HTTPException, status, Query
+from fastapi import APIRouter, HTTPException, status, Query, Body
+from pydantic import BaseModel
+
 from backend.models.schemas import HealthResponse, WiFiEventSchema, RoomSchema, OccupancyResponse
 from backend.services.event_service import ingest_event
+from backend.services.demo_service import (
+    simulate_device_entry,
+    simulate_device_exit,
+    toggle_ap_status,
+    launch_scenario_background,
+)
 from ml.occupancy import compute_room_occupancy, get_all_rooms_occupancy
 from database.db import get_db_connection
 
 router = APIRouter()
+
+
+class DemoActionRequest(BaseModel):
+    room_id: str = "Room 101"
+    ap_id: Optional[str] = None
+
+
+class ToggleApRequest(BaseModel):
+    ap_id: str = "AP_01"
+    status: Optional[str] = None
+
+
+class RunScenarioRequest(BaseModel):
+    scenario: str = "normal_class"
+    speed: float = 30.0
 
 
 @router.get("/health", response_model=HealthResponse, tags=["Health"])
@@ -80,3 +103,41 @@ async def get_all_occupancy():
     """
     occupancies = get_all_rooms_occupancy()
     return [OccupancyResponse(**occ) for occ in occupancies]
+
+
+# ==============================================================================
+# DEMO CONTROLS (PRD Section 20 & Build Prompt Step 6)
+# ==============================================================================
+
+@router.post("/demo/simulate-entry", tags=["Demo Controls"])
+async def demo_simulate_entry(req: DemoActionRequest = Body(default_factory=DemoActionRequest)):
+    """Simulate a single device entering a classroom."""
+    return await simulate_device_entry(room_id=req.room_id, ap_id=req.ap_id)
+
+
+@router.post("/demo/simulate-exit", tags=["Demo Controls"])
+async def demo_simulate_exit(req: DemoActionRequest = Body(default_factory=DemoActionRequest)):
+    """Simulate an active device leaving a classroom."""
+    return await simulate_device_exit(room_id=req.room_id, ap_id=req.ap_id)
+
+
+@router.post("/demo/toggle-ap", tags=["Demo Controls"])
+async def demo_toggle_ap(req: ToggleApRequest = Body(default_factory=ToggleApRequest)):
+    """Toggle AP status between online and offline (simulate hardware failure)."""
+    return await toggle_ap_status(ap_id=req.ap_id, new_status=req.status)
+
+
+@router.post("/demo/run-scenario", tags=["Demo Controls"])
+async def demo_run_scenario(req: RunScenarioRequest = Body(default_factory=RunScenarioRequest)):
+    """Launch a scripted simulation scenario (normal_class, low_attendance, ap_failure)."""
+    if req.scenario not in ["normal_class", "low_attendance", "ap_failure"]:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid scenario. Must be normal_class, low_attendance, or ap_failure",
+        )
+    launch_scenario_background(scenario_name=req.scenario, speed_multiplier=req.speed)
+    return {
+        "status": "scenario_started",
+        "scenario": req.scenario,
+        "speed_multiplier": req.speed,
+    }

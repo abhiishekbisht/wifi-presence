@@ -1,0 +1,232 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Wi-Fi Presence Estimation — Network Operations Center</title>
+  
+  <!-- Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+  <!-- Chart.js 4.x -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+
+  <!-- Stylesheet -->
+  <link rel="stylesheet" href="/dashboard/styles.css">
+</head>
+<body>
+
+  <div class="dashboard-container">
+    <!-- Header -->
+    <header>
+      <div class="brand">
+        <div class="brand-icon">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M5 12.55a11 11 0 0 1 14.08 0"></path>
+            <path d="M1.42 9a16 16 0 0 1 21.16 0"></path>
+            <path d="M8.53 16.11a6 6 0 0 1 6.95 0"></path>
+            <line x1="12" y1="20" x2="12.01" y2="20"></line>
+          </svg>
+        </div>
+        <div class="brand-text">
+          <h1>Wi-Fi Presence Operations Center</h1>
+          <p>Calibrated AP Room Mapping • DBSCAN Noise Filter • Confidence-Scored Occupancy</p>
+        </div>
+      </div>
+
+      <div class="header-status-group">
+        <div id="wsStatusBadge" class="status-badge status-disconnected">
+          <span class="pulse-dot"></span>
+          <span id="wsStatusText">CONNECTING...</span>
+        </div>
+      </div>
+    </header>
+
+    <!-- AP Status Strip -->
+    <div id="apStrip" class="ap-strip-container">
+      <span class="ap-strip-label">Access Points:</span>
+      <div class="ap-pill online"><span class="pulse-dot"></span> <strong>AP_01</strong> (Room 101)</div>
+      <div class="ap-pill online"><span class="pulse-dot"></span> <strong>AP_02</strong> (Room 102)</div>
+      <div class="ap-pill online"><span class="pulse-dot"></span> <strong>AP_03</strong> (Lab 1)</div>
+    </div>
+
+    <!-- Room Gauge Cards Grid -->
+    <div class="rooms-grid">
+      <!-- Room 101 -->
+      <div class="room-card" id="card-Room_101">
+        <div class="room-card-header">
+          <div class="room-title">
+            <h3>Room 101</h3>
+            <span>Academic Block A • 1st Floor</span>
+          </div>
+          <span id="conf-Room_101" class="confidence-badge confidence-high">High Conf (92%)</span>
+        </div>
+        <div class="room-card-body">
+          <div class="gauge-wrapper">
+            <svg class="gauge-svg" viewBox="0 0 120 120">
+              <circle class="gauge-bg" cx="60" cy="60" r="50"></circle>
+              <circle id="gauge-Room_101" class="gauge-progress" cx="60" cy="60" r="50"></circle>
+            </svg>
+            <div class="gauge-center-text">
+              <div class="gauge-percent"><span id="percent-Room_101">0.0</span><span class="gauge-unit">%</span></div>
+            </div>
+          </div>
+          <div class="room-metrics">
+            <div class="metric-item">
+              <span class="metric-label">Estimated Present</span>
+              <span class="metric-value"><span id="est-Room_101">0</span> / <span id="cap-Room_101">40</span></span>
+              <span id="seen-Room_101" class="metric-sub">0 seen (0 noise)</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Room 102 -->
+      <div class="room-card" id="card-Room_102">
+        <div class="room-card-header">
+          <div class="room-title">
+            <h3>Room 102</h3>
+            <span>Academic Block A • 1st Floor</span>
+          </div>
+          <span id="conf-Room_102" class="confidence-badge confidence-high">High Conf (90%)</span>
+        </div>
+        <div class="room-card-body">
+          <div class="gauge-wrapper">
+            <svg class="gauge-svg" viewBox="0 0 120 120">
+              <circle class="gauge-bg" cx="60" cy="60" r="50"></circle>
+              <circle id="gauge-Room_102" class="gauge-progress" cx="60" cy="60" r="50"></circle>
+            </svg>
+            <div class="gauge-center-text">
+              <div class="gauge-percent"><span id="percent-Room_102">0.0</span><span class="gauge-unit">%</span></div>
+            </div>
+          </div>
+          <div class="room-metrics">
+            <div class="metric-item">
+              <span class="metric-label">Estimated Present</span>
+              <span class="metric-value"><span id="est-Room_102">0</span> / <span id="cap-Room_102">35</span></span>
+              <span id="seen-Room_102" class="metric-sub">0 seen (0 noise)</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Lab 1 -->
+      <div class="room-card" id="card-Lab_1">
+        <div class="room-card-header">
+          <div class="room-title">
+            <h3>Computer Lab 1</h3>
+            <span>Science Block • Ground Floor</span>
+          </div>
+          <span id="conf-Lab_1" class="confidence-badge confidence-high">High Conf (89%)</span>
+        </div>
+        <div class="room-card-body">
+          <div class="gauge-wrapper">
+            <svg class="gauge-svg" viewBox="0 0 120 120">
+              <circle class="gauge-bg" cx="60" cy="60" r="50"></circle>
+              <circle id="gauge-Lab_1" class="gauge-progress" cx="60" cy="60" r="50"></circle>
+            </svg>
+            <div class="gauge-center-text">
+              <div class="gauge-percent"><span id="percent-Lab_1">0.0</span><span class="gauge-unit">%</span></div>
+            </div>
+          </div>
+          <div class="room-metrics">
+            <div class="metric-item">
+              <span class="metric-label">Estimated Present</span>
+              <span class="metric-value"><span id="est-Lab_1">0</span> / <span id="cap-Lab_1">25</span></span>
+              <span id="seen-Lab_1" class="metric-sub">0 seen (0 noise)</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Analytics & Live Stream Grid -->
+    <div class="analytics-grid">
+      <!-- Live Occupancy Chart Panel -->
+      <div class="panel">
+        <div class="panel-header">
+          <h2>
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline>
+            </svg>
+            Real-Time Occupancy Timeline
+          </h2>
+          <span class="panel-badge">WebSocket Live Stream</span>
+        </div>
+        <div class="chart-wrapper">
+          <canvas id="occupancyChart"></canvas>
+        </div>
+      </div>
+
+      <!-- Live Event Feed Panel -->
+      <div class="panel">
+        <div class="panel-header">
+          <h2>
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <rect x="2" y="2" width="20" height="8" rx="2" ry="2"></rect>
+              <rect x="2" y="14" width="20" height="8" rx="2" ry="2"></rect>
+              <line x1="6" y1="6" x2="6.01" y2="6"></line>
+              <line x1="6" y1="18" x2="6.01" y2="18"></line>
+            </svg>
+            Live AP Event Feed
+          </h2>
+          <span class="panel-badge">Hover to Pause</span>
+        </div>
+        <div class="feed-container">
+          <div class="feed-header">
+            <div>Timestamp</div>
+            <div>AP ID</div>
+            <div>Device ID</div>
+            <div>Event</div>
+            <div>RSSI</div>
+          </div>
+          <div id="eventFeed">
+            <!-- Event rows dynamically inserted here -->
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Live Demo Controls Panel -->
+    <div class="demo-panel">
+      <div class="demo-title">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <polygon points="5 3 19 12 5 21 5 3"></polygon>
+        </svg>
+        Live Viva Demo Controls (Trigger scripted actions without leaving browser)
+      </div>
+      <div class="demo-actions-grid">
+        <button class="btn-demo" onclick="triggerSimulateEntry()">
+          <span>+</span> Simulate Device Entry
+        </button>
+        <button class="btn-demo" onclick="triggerSimulateExit()">
+          <span>−</span> Simulate Device Exit
+        </button>
+        <button class="btn-demo btn-danger" onclick="toggleAp('AP_01')">
+          <span>⚡</span> Toggle AP_01 Outage
+        </button>
+        <button class="btn-demo btn-scenario" onclick="triggerScenario('normal_class')">
+          <span>▶</span> Run 'normal_class' Scenario
+        </button>
+        <button class="btn-demo btn-scenario" onclick="triggerScenario('low_attendance')">
+          <span>▶</span> Run 'low_attendance' Scenario
+        </button>
+        <button class="btn-demo btn-scenario" onclick="triggerScenario('ap_failure')">
+          <span>▶</span> Run 'ap_failure' Scenario
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Toast Notification -->
+  <div id="toastBanner" class="toast-banner">
+    <span class="pulse-dot"></span>
+    <span id="toastText">Action triggered</span>
+  </div>
+
+  <!-- Application JS -->
+  <script src="/dashboard/app.js"></script>
+</body>
+</html>
