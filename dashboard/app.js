@@ -447,6 +447,12 @@ async function triggerScenario(scenarioName) {
   }
 }
 
+function downloadAttendanceCsv() {
+  showToast("Downloading attendance estimates CSV...");
+  window.location.href = "/attendance/export/csv";
+}
+
+
 // ---------------------------------------------------------------------------
 // 7. Toast Notifications
 // ---------------------------------------------------------------------------

@@ -1,0 +1,4 @@
+room_id,date,start_time,end_time,actual_present_count,notes
+Room 101,2026-09-20,2026-09-20T10:00:00Z,2026-09-20T11:00:00Z,14,Consented Student Pilot Group A - CS401 Class
+Room 102,2026-09-20,2026-09-20T11:00:00Z,2026-09-20T12:00:00Z,12,Consented Student Pilot Group B - DS302 Class
+Lab 1,2026-09-20,2026-09-20T14:00:00Z,2026-09-20T15:00:00Z,10,Consented Student Pilot Group C - Lab Session

@@ -2,7 +2,7 @@
 API route definitions for the Wi-Fi Presence system.
 """
 from typing import List, Dict, Any, Optional
-from fastapi import APIRouter, HTTPException, status, Query, Body
+from fastapi import APIRouter, HTTPException, status, Query, Body, Response
 from pydantic import BaseModel
 
 from backend.models.schemas import HealthResponse, WiFiEventSchema, RoomSchema, OccupancyResponse
@@ -12,6 +12,11 @@ from backend.services.demo_service import (
     simulate_device_exit,
     toggle_ap_status,
     launch_scenario_background,
+)
+from backend.services.analytics_service import (
+    get_historical_analytics,
+    get_attendance_by_date,
+    export_attendance_csv,
 )
 from ml.occupancy import compute_room_occupancy, get_all_rooms_occupancy
 from database.db import get_db_connection
@@ -103,6 +108,42 @@ async def get_all_occupancy():
     """
     occupancies = get_all_rooms_occupancy()
     return [OccupancyResponse(**occ) for occ in occupancies]
+
+
+# ==============================================================================
+# ANALYTICS & CSV EXPORT (PRD Section 4 & 19)
+# ==============================================================================
+
+@router.get("/analytics", tags=["Analytics"])
+async def get_analytics():
+    """
+    Returns historical analytics: daily attendance trends, room utilization,
+    peak occupancy, AP activity distribution, and summary KPIs.
+    """
+    return get_historical_analytics()
+
+
+@router.get("/attendance/export/csv", tags=["Analytics"])
+async def export_attendance_csv_endpoint(date: Optional[str] = Query(None, description="Optional YYYY-MM-DD filter")):
+    """
+    Export attendance estimates records as a downloadable CSV file.
+    """
+    csv_content = export_attendance_csv(date_filter=date)
+    filename = f"attendance_estimates_{date}.csv" if date else "attendance_estimates_all.csv"
+    return Response(
+        content=csv_content,
+        media_type="text/csv",
+        headers={"Content-Disposition": f"attachment; filename={filename}"},
+    )
+
+
+@router.get("/attendance/{date}", tags=["Analytics"])
+async def get_attendance_date(date: str):
+    """
+    Get estimated attendance records for a given date (YYYY-MM-DD).
+    """
+    records = get_attendance_by_date(date)
+    return {"date": date, "records": records, "count": len(records)}
 
 
 # ==============================================================================

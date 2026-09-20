@@ -1,67 +1,67 @@
-# Wi-Fi Classroom Presence Estimation
+# Wi-Fi Presence Estimation System
 
-A real-time system that estimates classroom occupancy and device-level presence from Wi-Fi Access Point (AP) session events, with calibrated room mapping, DBSCAN noise filtering, and confidence-scored occupancy analytics.
+A scalable pipeline for estimating classroom attendance from raw Wi-Fi access point session logs using DBSCAN noise filtering and calibrated static room mappings.
 
----
+## Setup
 
-## Project Structure
+1. **Install Dependencies**:
+   ```bash
+   pip install -r requirements.txt
+   ```
 
-```
-wifi-presence/
-├── backend/
-│   ├── main.py             # FastAPI entry point & lifespan handler
-│   ├── config.py           # Pydantic environment configuration
-│   ├── api/                # REST API routers and endpoints
-│   ├── models/             # Pydantic schemas and data models
-│   ├── services/           # Sessionization and business logic services
-│   └── websocket/          # WebSocket managers and live stream handlers
-├── ml/                     # ML modules (DBSCAN noise filtering, calibration, confidence scoring)
-├── simulator/              # Schema-faithful Wi-Fi event generator and demo scenarios
-├── database/
-│   ├── schema.sql          # Core SQLite / relational schema
-│   ├── db.py               # SQLite connection helper
-│   ├── init_db.py          # Database initialization & seeding script
-│   └── wifi_presence.db    # SQLite database file
-├── dashboard/              # Self-contained dark NOC-style HTML/JS dashboard
-├── data/                   # Batch event logs and evaluation datasets
-├── tests/                  # Pytest unit, integration, and evaluation suites
-├── requirements.txt        # Pinned Python package dependencies
-├── .env.example            # Environment variables template
-└── README.md
-```
+2. **Initialize Database**:
+   The SQLite database (`database/wifi_presence.db`) will be automatically initialized when starting the backend, or you can manually initialize it using:
+   ```bash
+   python database/init_db.py
+   ```
 
----
+## Running the Application
 
-## Quickstart
-
-### 1. Setup Virtual Environment & Install Dependencies
-
+To start the backend server and open the live operations dashboard in one command:
 ```bash
-cd "wifi-presence"
-python3 -m venv venv
-source venv/bin/activate
-pip install -r requirements.txt
+./run.sh
 ```
+This will launch the FastAPI backend on `http://localhost:8000` and automatically open the Live NOC Dashboard in your default web browser.
 
-### 2. Initialize the Database
+## Running the Live Demo (Viva Sequence)
 
+Once the application is running via `./run.sh`, you can trigger a scripted, rehearsable demo sequence that showcases dynamic occupancy changes, AP failure handling, and real-time dashboard updates.
+
+In a new terminal window, run:
 ```bash
-python3 database/init_db.py
+python simulator/demo_script.py
 ```
+This script will:
+1. Start with low occupancy in Room 101.
+2. Ramp up device entries dynamically.
+3. Simulate an AP hardware failure (AP_01 goes offline).
+4. Restore the AP and process a batch of exits.
 
-This creates the SQLite database at `database/wifi_presence.db` and populates the initial calibrated rooms and access points (`Room 101`, `Room 102`, `Lab 1`).
+Watch the Live NOC Dashboard during this script to see the animations and metrics update in real time.
 
-### 3. Run the Backend Server
+## Evaluation Scripts
 
+The project includes two distinct evaluation tracks to validate both pipeline integrity and real-world estimation accuracy.
+
+### Track A: Simulated Stress Test & Pipeline Correctness
+Validates throughput, latency, and correctness against known generated simulator targets.
 ```bash
-uvicorn backend.main:app --reload --host 0.0.0.0 --port 8000
+python tests/evaluate_pipeline.py
 ```
 
-- **API Documentation (Swagger UI)**: [http://localhost:8000/docs](http://localhost:8000/docs)
-- **Health Check Endpoint**: [http://localhost:8000/health](http://localhost:8000/health)
-
-### 4. Run Tests
-
+### Track B: Real Consented Pilot vs Manual Roll Call
+Compares the system's estimated occupancy against a real, consented manual roll-call dataset (validates accuracy in a real-world scenario).
 ```bash
-pytest tests/ -v
+python tests/real_pilot_eval.py
 ```
+
+## Known Limitations
+
+**1. MAC Randomization Limitations**
+Because modern devices (iOS 14+, Android 10+) rotate MAC addresses on new network connections, a student leaving the building and returning may be counted as a new device if the address rotates. This system assumes intra-day stability while connected to the same campus SSID, but long gaps in connectivity may result in slight over-counting.
+
+**2. Multi-Device Ownership**
+The system currently treats 1 device = 1 student. Students carrying a laptop, phone, and tablet (all connected to Wi-Fi) will artificially inflate the raw active count. While DBSCAN filters out some transient noise, seated multi-device users are a known source of positive error (over-estimation) that requires future model calibration based on historical device-ratio baselines.
+
+**3. Boundary Bleed (Adjacent Rooms)**
+Offices or hallways immediately adjacent to a classroom may pick up strong signals from devices that are not actually in the room. The static room mapping currently assigns APs to a single room without trilateration, meaning a device sitting right outside the door may be mistakenly classified as "present" if their RSSI is stable and strong.
