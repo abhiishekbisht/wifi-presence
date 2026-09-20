@@ -1,0 +1,49 @@
+# Wi-Fi Event Simulator Configuration
+
+topology:
+  rooms:
+    - id: "Room 101"
+      name: "Room 101"
+      capacity: 40
+      aps: ["AP_01"]
+    - id: "Room 102"
+      name: "Room 102"
+      capacity: 35
+      aps: ["AP_02"]
+    - id: "Lab 1"
+      name: "Computer Lab 1"
+      capacity: 25
+      aps: ["AP_03"]
+
+simulation:
+  class_duration_minutes: 60
+  heartbeat_interval_seconds: 30
+  inactivity_timeout_seconds: 300
+  default_speed_multiplier: 15.0
+  total_device_pool: 60
+  campus_ssid: "CAMPUS_STUDENT_WIFI"
+  hash_salt: "wifi-presence-salt-2026"
+
+behavior:
+  # Probabilities
+  walkby_probability: 0.15          # Transient noise (5-15s walk-bys)
+  transition_probability: 0.10      # Mid-session AP roaming
+  late_arrival_probability: 0.20    # Devices arriving 5-15 min into class
+  early_departure_probability: 0.15 # Devices leaving 10-20 min before class ends
+
+rssi_profiles:
+  seated:
+    mean: -50
+    std: 3.5
+    min: -68
+    max: -35
+  moving:
+    mean: -75
+    std: 8.0
+    min: -90
+    max: -60
+  transient:
+    mean: -78
+    std: 6.0
+    min: -90
+    max: -65
