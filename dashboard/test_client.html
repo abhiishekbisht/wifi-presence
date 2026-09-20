@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Wi-Fi Presence — Live WebSocket Test Client</title>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            background-color: #0b0f19;
+            color: #e2e8f0;
+            font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+            padding: 24px;
+        }
+        header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid #1e293b;
+            padding-bottom: 16px;
+            margin-bottom: 20px;
+        }
+        h1 { font-size: 1.25rem; color: #38bdf8; }
+        .status-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 6px 12px;
+            border-radius: 9999px;
+            font-size: 0.85rem;
+            font-weight: 600;
+        }
+        .status-connected { background: #064e3b; color: #34d399; }
+        .status-disconnected { background: #7f1d1d; color: #f87171; }
+        .pulse-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background-color: currentColor;
+            animation: pulse 1.5s infinite;
+        }
+        @keyframes pulse {
+            0%, 100% { opacity: 1; transform: scale(1); }
+            50% { opacity: 0.4; transform: scale(0.85); }
+        }
+        .stats-bar {
+            display: flex;
+            gap: 20px;
+            margin-bottom: 16px;
+            font-size: 0.9rem;
+            color: #94a3b8;
+        }
+        .stat-val { color: #f8fafc; font-weight: bold; }
+        .feed-container {
+            background: #111827;
+            border: 1px solid #1f2937;
+            border-radius: 8px;
+            padding: 16px;
+            height: 600px;
+            overflow-y: auto;
+        }
+        .event-row {
+            display: grid;
+            grid-template-columns: 220px 100px 200px 120px 100px 100px;
+            padding: 8px 12px;
+            border-bottom: 1px solid #1e293b;
+            font-size: 0.85rem;
+            align-items: center;
+        }
+        .event-row:hover { background: #1e293b; }
+        .event-header {
+            font-weight: bold;
+            color: #64748b;
+            border-bottom: 2px solid #334155;
+            background: #0f172a;
+            position: sticky;
+            top: 0;
+        }
+        .badge-connect { color: #34d399; font-weight: bold; }
+        .badge-heartbeat { color: #38bdf8; }
+        .badge-disconnect { color: #f87171; font-weight: bold; }
+        .rssi-strong { color: #4ade80; }
+        .rssi-medium { color: #fbbf24; }
+        .rssi-weak { color: #f87171; }
+    </style>
+</head>
+<body>
+    <header>
+        <div>
+            <h1>Wi-Fi Presence — Live Event Stream</h1>
+            <p style="font-size: 0.8rem; color: #64748b; margin-top: 4px;">Subscribed to ws://localhost:8000/live</p>
+        </div>
+        <div id="statusBadge" class="status-badge status-disconnected">
+            <span class="pulse-dot"></span>
+            <span id="statusText">Connecting...</span>
+        </div>
+    </header>
+
+    <div class="stats-bar">
+        <div>Total Events Received: <span id="eventCount" class="stat-val">0</span></div>
+        <div>Active APs Seen: <span id="apCount" class="stat-val">0</span></div>
+        <div>Unique Devices: <span id="devCount" class="stat-val">0</span></div>
+    </div>
+
+    <div class="feed-container">
+        <div class="event-row event-header">
+            <div>Timestamp</div>
+            <div>AP ID</div>
+            <div>Device ID</div>
+            <div>Event Type</div>
+            <div>RSSI</div>
+            <div>Session ID</div>
+        </div>
+        <div id="eventList"></div>
+    </div>
+
+    <script>
+        const statusBadge = document.getElementById('statusBadge');
+        const statusText = document.getElementById('statusText');
+        const eventCountSpan = document.getElementById('eventCount');
+        const apCountSpan = document.getElementById('apCount');
+        const devCountSpan = document.getElementById('devCount');
+        const eventList = document.getElementById('eventList');
+
+        let totalEvents = 0;
+        const apsSeen = new Set();
+        const devsSeen = new Set();
+
+        function connectWebSocket() {
+            const wsProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+            const wsHost = window.location.hostname || 'localhost';
+            const wsPort = window.location.port || '8000';
+            const wsUrl = `${wsProtocol}//${wsHost}:${wsPort}/live`;
+
+            const ws = new WebSocket(wsUrl);
+
+            ws.onopen = () => {
+                statusBadge.className = 'status-badge status-connected';
+                statusText.textContent = 'LIVE CONNECTED';
+            };
+
+            ws.onmessage = (msg) => {
+                try {
+                    const data = JSON.parse(msg.data);
+                    if (data.type === 'event') {
+                        totalEvents++;
+                        apsSeen.add(data.ap_id);
+                        devsSeen.add(data.device_id);
+
+                        eventCountSpan.textContent = totalEvents;
+                        apCountSpan.textContent = apsSeen.size;
+                        devCountSpan.textContent = devsSeen.size;
+
+                        const row = document.createElement('div');
+                        row.className = 'event-row';
+
+                        let eventClass = 'badge-heartbeat';
+                        if (data.event === 'connect') eventClass = 'badge-connect';
+                        if (data.event === 'disconnect') eventClass = 'badge-disconnect';
+
+                        let rssiClass = 'rssi-strong';
+                        if (data.rssi < -70) rssiClass = 'rssi-weak';
+                        else if (data.rssi < -55) rssiClass = 'rssi-medium';
+
+                        row.innerHTML = `
+                            <div>${data.timestamp}</div>
+                            <div><strong>${data.ap_id}</strong></div>
+                            <div>${data.device_id}</div>
+                            <div class="${eventClass}">${data.event.toUpperCase()}</div>
+                            <div class="${rssiClass}">${data.rssi} dBm</div>
+                            <div>#${data.session_id || '-'}</div>
+                        `;
+
+                        eventList.insertBefore(row, eventList.firstChild);
+
+                        // Keep at most 200 items in feed
+                        if (eventList.children.length > 200) {
+                            eventList.removeChild(eventList.lastChild);
+                        }
+                    }
+                } catch (e) {
+                    console.error('Error parsing event message', e);
+                }
+            };
+
+            ws.onclose = () => {
+                statusBadge.className = 'status-badge status-disconnected';
+                statusText.textContent = 'DISCONNECTED - RETRYING...';
+                setTimeout(connectWebSocket, 2000);
+            };
+
+            ws.onerror = (err) => {
+                console.error('WebSocket error:', err);
+                ws.close();
+            };
+        }
+
+        connectWebSocket();
+    </script>
+</body>
+</html>
