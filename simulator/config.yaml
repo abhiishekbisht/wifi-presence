@@ -20,9 +20,10 @@ simulation:
   heartbeat_interval_seconds: 30
   inactivity_timeout_seconds: 300
   default_speed_multiplier: 15.0
-  total_device_pool: 60
+  total_device_pool: 100
   campus_ssid: "CAMPUS_STUDENT_WIFI"
   hash_salt: "wifi-presence-salt-2026"
+
 
 behavior:
   # Probabilities

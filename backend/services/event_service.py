@@ -1,7 +1,7 @@
 """
 Event Ingestion Service.
 Coordinates database persistence for events, updates device registry,
-invokes sessionizer, and broadcasts real-time payloads to WebSocket clients.
+invokes sessionizer, recomputes live occupancy, and broadcasts real-time payloads to WebSocket clients.
 """
 from datetime import datetime
 from typing import Dict, Any, Optional
@@ -10,6 +10,8 @@ import sqlite3
 from database.db import get_db_connection
 from backend.websocket.manager import ws_manager
 from backend.services.sessionizer import sessionizer
+from ml.room_mapping import room_mapping
+from ml.occupancy import compute_room_occupancy
 
 
 async def ingest_event(event_data: Dict[str, Any]) -> Dict[str, Any]:
@@ -18,7 +20,8 @@ async def ingest_event(event_data: Dict[str, Any]) -> Dict[str, Any]:
     1. Persist to `events` table
     2. Upsert device in `devices` table
     3. Update active session and features in `sessions` table
-    4. Broadcast event to WebSocket subscribers
+    4. Compute updated live room occupancy
+    5. Broadcast event and occupancy updates to WebSocket subscribers
     """
     conn = get_db_connection()
     try:
@@ -59,6 +62,12 @@ async def ingest_event(event_data: Dict[str, Any]) -> Dict[str, Any]:
         # 3. Process session
         session_id = sessionizer.process_event(event_data, conn=conn)
 
+        # 4. Compute updated occupancy for the room this AP belongs to
+        room_id = room_mapping.get_room_for_ap(event_data["ap_id"])
+        room_occupancy = None
+        if room_id:
+            room_occupancy = compute_room_occupancy(room_id, conn=conn)
+
         # Build payload for WebSocket broadcast
         broadcast_payload = {
             "type": "event",
@@ -69,9 +78,11 @@ async def ingest_event(event_data: Dict[str, Any]) -> Dict[str, Any]:
             "device_id": event_data["device_id"],
             "event": event_data["event"],
             "rssi": event_data["rssi"],
+            "room_id": room_id,
+            "room_occupancy": room_occupancy,
         }
 
-        # 4. Broadcast via WebSocket
+        # 5. Broadcast via WebSocket
         await ws_manager.broadcast(broadcast_payload)
 
         return {
@@ -79,6 +90,8 @@ async def ingest_event(event_data: Dict[str, Any]) -> Dict[str, Any]:
             "event_id": event_id,
             "session_id": session_id,
             "device_id": event_data["device_id"],
+            "room_id": room_id,
+            "room_occupancy": room_occupancy,
         }
 
     finally:

@@ -1,10 +1,11 @@
 """
 API route definitions for the Wi-Fi Presence system.
 """
-from typing import List, Dict, Any
-from fastapi import APIRouter, HTTPException, status
-from backend.models.schemas import HealthResponse, WiFiEventSchema, RoomSchema
+from typing import List, Dict, Any, Optional
+from fastapi import APIRouter, HTTPException, status, Query
+from backend.models.schemas import HealthResponse, WiFiEventSchema, RoomSchema, OccupancyResponse
 from backend.services.event_service import ingest_event
+from ml.occupancy import compute_room_occupancy, get_all_rooms_occupancy
 from database.db import get_db_connection
 
 router = APIRouter()
@@ -52,3 +53,30 @@ async def get_rooms():
         return rooms
     finally:
         conn.close()
+
+
+@router.get("/rooms/{room_id}/occupancy", response_model=OccupancyResponse, tags=["Occupancy"])
+async def get_room_occupancy(room_id: str):
+    """
+    Get current live occupancy estimate, device presence count, and average confidence for a specific room.
+    """
+    conn = get_db_connection()
+    try:
+        cursor = conn.cursor()
+        cursor.execute("SELECT room_id FROM rooms WHERE room_id = ?", (room_id,))
+        if not cursor.fetchone():
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Room '{room_id}' not found.")
+
+        occupancy = compute_room_occupancy(room_id, conn=conn)
+        return OccupancyResponse(**occupancy)
+    finally:
+        conn.close()
+
+
+@router.get("/occupancy", response_model=List[OccupancyResponse], tags=["Occupancy"])
+async def get_all_occupancy():
+    """
+    Get live occupancy estimates for all configured rooms.
+    """
+    occupancies = get_all_rooms_occupancy()
+    return [OccupancyResponse(**occ) for occ in occupancies]
