@@ -23,9 +23,24 @@ To start the backend server and open the live operations dashboard in one comman
 ```
 This will launch the FastAPI backend on `http://localhost:8000` and automatically open the Live NOC Dashboard in your default web browser.
 
+## Running with Docker (Production & Staging)
+
+For containerized deployment with zero host dependencies:
+
+```bash
+# Start with Docker Compose
+docker compose up -d --build
+
+# View container logs
+docker compose logs -f
+```
+The dashboard and API will be available at `http://localhost:8000`.
+
+For full production deployment options (Nginx reverse proxy with SSL, Linux VPS Systemd, Render, Fly.io, Railway, and backup automation), see [DEPLOYMENT.md](file:///Users/datalynx/Desktop/Screenshot/WIFI%20AP%20/wifi-presence/DEPLOYMENT.md).
+
 ## Running the Live Demo (Viva Sequence)
 
-Once the application is running via `./run.sh`, you can trigger a scripted, rehearsable demo sequence that showcases dynamic occupancy changes, AP failure handling, and real-time dashboard updates.
+Once the application is running via `./run.sh` or Docker, you can trigger a scripted, rehearsable demo sequence that showcases dynamic occupancy changes, AP failure handling, and real-time dashboard updates.
 
 In a new terminal window, run:
 ```bash
@@ -55,6 +70,17 @@ Compares the system's estimated occupancy against a real, consented manual roll-
 python tests/real_pilot_eval.py
 ```
 
+## Production & Cloud Deployment Guide
+
+For comprehensive deployment instructions across various environments:
+- 🐳 **Docker & Docker Compose**: Multi-stage Dockerfile, named volumes, health checks.
+- 🌐 **Nginx & SSL Reverse Proxy**: HTTP/2, WebSocket proxying, security headers, Gzip.
+- 🖥 **Linux VPS (Systemd)**: Background daemon service with auto-restart.
+- ☁️ **Cloud PaaS**: Render (`render.yaml`), Fly.io (`fly.toml`), Railway (`Procfile`).
+- 💾 **Backups**: ACID-safe SQLite database backup script with gzip & retention rotation (`deploy/scripts/backup_db.sh`).
+
+👉 Check out the complete [Deployment Guide](file:///Users/datalynx/Desktop/Screenshot/WIFI%20AP%20/wifi-presence/DEPLOYMENT.md).
+
 ## Known Limitations
 
 **1. MAC Randomization Limitations**
@@ -65,3 +91,4 @@ The system currently treats 1 device = 1 student. Students carrying a laptop, ph
 
 **3. Boundary Bleed (Adjacent Rooms)**
 Offices or hallways immediately adjacent to a classroom may pick up strong signals from devices that are not actually in the room. The static room mapping currently assigns APs to a single room without trilateration, meaning a device sitting right outside the door may be mistakenly classified as "present" if their RSSI is stable and strong.
+

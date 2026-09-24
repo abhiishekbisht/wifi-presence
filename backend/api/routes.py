@@ -41,12 +41,24 @@ class RunScenarioRequest(BaseModel):
 
 @router.get("/health", response_model=HealthResponse, tags=["Health"])
 async def health_check():
-    """Health check endpoint to verify backend service status."""
+    """Health check endpoint to verify backend service status and database connectivity."""
+    db_ok = True
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        cursor.execute("SELECT 1")
+        cursor.fetchone()
+        conn.close()
+    except Exception:
+        db_ok = False
+
+    from backend.config import settings
     return HealthResponse(
-        status="healthy",
+        status="healthy" if db_ok else "degraded",
         service="wifi-presence",
-        version="0.1.0",
+        version=settings.VERSION,
     )
+
 
 
 @router.post("/events", status_code=status.HTTP_201_CREATED, tags=["Events"])

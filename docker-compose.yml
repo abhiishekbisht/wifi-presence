@@ -1,0 +1,36 @@
+version: '3.8'
+
+services:
+  wifi-presence:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: wifi-presence-app
+    restart: unless-stopped
+    ports:
+      - "${PORT:-8000}:8000"
+    environment:
+      - ENVIRONMENT=${ENVIRONMENT:-production}
+      - HOST=0.0.0.0
+      - PORT=8000
+      - WORKERS=${WORKERS:-1}
+      - DATABASE_URL=sqlite:////app/database/wifi_presence.db
+      - LOG_LEVEL=${LOG_LEVEL:-INFO}
+      - CORS_ORIGINS=${CORS_ORIGINS:-*}
+    volumes:
+      # Named volume for persistent SQLite storage across container recreations
+      - wifi_database_data:/app/database
+      # Optional: persistent storage for analytics/pilot data
+      - wifi_app_data:/app/data
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+
+volumes:
+  wifi_database_data:
+    name: wifi_presence_database_data
+  wifi_app_data:
+    name: wifi_presence_app_data

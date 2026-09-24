@@ -41,7 +41,7 @@ app = FastAPI(
 # Configure CORS
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=settings.allowed_origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -90,5 +90,7 @@ if __name__ == "__main__":
         "backend.main:app",
         host=settings.HOST,
         port=settings.PORT,
-        reload=True,
+        reload=settings.RELOAD or (settings.ENVIRONMENT.lower() == "development"),
+        workers=settings.WORKERS if not (settings.RELOAD or settings.ENVIRONMENT.lower() == "development") else 1,
     )
+

@@ -1,0 +1,30 @@
+[Unit]
+Description=Wi-Fi Presence Estimation System Backend
+After=network.target
+
+[Service]
+Type=simple
+User=www-data
+Group=www-data
+WorkingDirectory=/var/www/wifi-presence
+EnvironmentFile=/var/www/wifi-presence/.env
+ExecStartPre=/var/www/wifi-presence/venv/bin/python /var/www/wifi-presence/database/init_db.py
+ExecStart=/var/www/wifi-presence/venv/bin/gunicorn backend.main:app \
+    --workers 2 \
+    --worker-class uvicorn.workers.UvicornWorker \
+    --bind 0.0.0.0:8000 \
+    --log-level info \
+    --access-logfile /var/log/wifi-presence-access.log \
+    --error-logfile /var/log/wifi-presence-error.log
+
+Restart=always
+RestartSec=5s
+LimitNOFILE=65535
+
+# Security sandbox options
+PrivateTmp=true
+ProtectSystem=full
+NoNewPrivileges=true
+
+[Install]
+WantedBy=multi-user.target
